@@ -1,19 +1,19 @@
 FROM python:3.9-slim
 
+# Set a working directory
 WORKDIR /app
 
-COPY . /app
+# Copy requirements.txt first to leverage Docker cache when dependencies don't change
+COPY requirements.txt .
 
-# Install dependencies
+# Install dependencies via pip
+RUN pip install --no-cache-dir -r requirements.txt
 
-RUN pip install --no-cache-dir --upgrade pip
-
-RUN pip install --no-cache-dir pytest
-
-COPY run.sh .
+# Copy application code
+COPY . .
 
 # Grant execute permission to run.sh
-
 RUN chmod +x run.sh
 
-CMD ["./run.sh"]
+# Command to run scripts
+CMD ["/bin/bash", "run.sh"]

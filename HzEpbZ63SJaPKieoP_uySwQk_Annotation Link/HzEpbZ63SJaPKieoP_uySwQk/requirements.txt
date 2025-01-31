@@ -1,4 +1,0 @@
-pytest
-pandas
-numpy
-scikit-learn

@@ -1,22 +1,20 @@
-def evaluate_string(a: str) -> bool:
+def p(arr: list[int]) -> list[int]:
     """
-    Evaluates a 2-digit string based on the following conditions:
-    1.  Returns True if all digits are greater than 4.
-    2.  Returns True if the first digit is 6.
-    3.  Returns False for invalid strings (not 2 digits, non-numeric).
-    4.  Returns False otherwise.
+    Given an array arr of integers, find all the elements that occur more than once in the array.
+    Return the result in ascending order. If no element repeats, return an empty array.
+
+    For example:
+    find_duplicates([1, 2, 3, 1, 2, 4, 5]) == [1, 2]
+    find_duplicates([1, 2, 3, 4, 5]) == []
+    find_duplicates([1, 1, 1, 2, 2, 3]) == [1, 2]
     """
-    if not (len(a) == 2 and a.isdigit()):
-        return False
-    c = int(a[0]) > 4
-    d = int(a[1]) > 4
-    f = int(a[0]) == 6
-    return (c and d) or f
-# Test cases
-print(evaluate_string("56"))  # True (both digits > 4)
-print(evaluate_string("61"))  # True (first digit is 6)
-print(evaluate_string("45"))  # False
-print(evaluate_string("73"))  # False
-print(evaluate_string("123")) # False (invalid length)
-print(evaluate_string("a7"))  # False (non-numeric)
-print(evaluate_string(""))   # False (invalid length)
+    counts = {}
+    duplicates = set()
+
+    for num in arr:
+        if num in counts:
+            duplicates.add(num)
+        else:
+            counts[num] = 1
+
+    return sorted(list(duplicates))

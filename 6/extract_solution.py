@@ -1,11 +1,12 @@
 import re
 
+
 def extract_code_blocks(
     markdown_text,
-    language='python',
+    language='javascript',
 ):
   """Extracts code blocks from strings. Do NOT modify this function."""
-  code_block_pattern = re.compile(rf'``{language}(.*?)``', re.DOTALL)
+  code_block_pattern = re.compile(rf'```{language}(.*?)```', re.DOTALL)
 
   # Find all matches
   code_blocks = code_block_pattern.findall(markdown_text)
@@ -23,9 +24,15 @@ def extract_solution(llm_response: str) -> list[tuple[str, str]]:
     llm_response: Any LLM's response to your concretized prompt.
 
   Returns:
-    A list of tuple (file_path, file_content) with the file path relative to the current working directory and its content."""
+    A list of tuple (file_path, file_content) with the file path relative to the
+    current working directory and its content.
+  """
 
-  code_solution = extract_code_blocks(llm_response)[0]
+  # Example implementation that extracts the first code block and save it to solution.py.
+  code_solution = "\n\n".join(extract_code_blocks(llm_response))
 
-  return [('solution.py', code_solution)]
+  # Add export statement to the code block.
+  if 'module.exports =' not in code_solution:
+    code_solution += '\n\nmodule.exports = { findSmallestInteger };'
 
+  return [('solution.js', code_solution)]

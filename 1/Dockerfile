@@ -1,19 +1,13 @@
-FROM python:3.9-slim
+FROM node:23-alpine
 
-WORKDIR /app
+WORKDIR /usr/src/app
 
-COPY . /app
+RUN apk update && apk add bash
 
-# Install dependencies
+COPY package*.json ./
 
-RUN pip install --no-cache-dir --upgrade pip
+RUN npm install
 
-RUN pip install --no-cache-dir -r requirements.txt
+COPY . .
 
-COPY run.sh .
-
-# Grant execute permission to run.sh
-
-RUN chmod +x run.sh
-
-CMD ["./run.sh"]
+CMD ["/bin/bash", "run.sh"]

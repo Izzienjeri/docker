@@ -4,10 +4,17 @@ verify_ssl = true
 name = "pypi"
 
 [packages]
+uvicorn = "*"
+litestar = "*"
+aiofiles = "*"
 pandas = "*"
-numpy = "*"
 scikit-learn = "*"
-pytest = "*"
+langchain-core = "*"
+prefect = "*"
+flask-mail = "*"
+quantlib = "*"
+spacy = "*"
+statsmodels = "*"
 
 [dev-packages]
 
