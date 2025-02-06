@@ -1,123 +1,85 @@
 import os
 from extract_solution import extract_solution
 
-llm_response = r'''
-```python
-import pandas as pd
-import numpy as np
-import statsmodels.api as sm
-from sklearn.model_selection import train_test_split
+llm_response = '''
+The IndexError occurs because there are cases where word_idx (an index corresponding to a tokenized word) is greater than or equal to the length of label. This happens because word_ids is always as long as the tokenized sequence, while label may have fewer entries than word_ids due to the truncation or padding applied to the text. You can fix this by checking the bounds of word_idx before accessing label.
 
-class ForwardStepwiseSelector:
-    def __init__(self, filepath):
-        self.filepath = filepath
-        self.data = self.load_data()
-        self.train_data = None
-        self.test_data = None
+Here’s the corrected function:
 
-    def load_data(self):
-        try:
-            df = pd.read_csv(self.filepath)
-            df.columns = df.columns.str.lower()
-            return df
-        except FileNotFoundError:
-            print(f"Error: File '{self.filepath}' not found.")
-            return None
+from transformers import AutoTokenizer
 
-    def split_data(self, test_size=0.2, random_state=42):
-        if self.data is not None:
-            self.train_data, self.test_data = train_test_split(self.data, test_size=test_size, random_state=random_state)
+def p(texts, labels, max_length=512):
+    """
+    Tokenize the input text with truncation and padding, then align it
+    with the provided labels. If the word index exceeds the label length,
+    append -100 to ensure it is ignored by the loss function.
 
-    def add_constant_to_data(self, data):
-        data = data.copy()
-        data['const'] = 1  # Adding constant for the intercept term.
-        return data
+    Args:
+        texts (list): A list of tokens or tokenized sentences.
+        labels (list): A list of corresponding labels for each token in texts.
+        max_length (int, optional): The max sequence length. Defaults to 512.
 
-    def train_model(self, X, y):
-        model = sm.OLS(y, X)
-        results = model.fit()
-        return results
+    Returns:
+        dict: The tokenized encodings dictionary containing aligned labels.
+    """
+    # Tokenize the input text with truncation and padding
+    tokenizer = AutoTokenizer.from_pretrained("bert-base-uncased")
 
-    def calculate_rss(self, model, X, y):
-        return np.sum(np.square(y - model.predict(X)))
+    encodings = tokenizer(
+        texts,
+        is_split_into_words=True,
+        return_offsets_mapping=True,
+        padding=True,
+        truncation=True,
+        max_length=max_length)
 
+    encoded_labels = []
 
-    def select_best_predictor(self, predictors_forward, remaining_predictors):
-        best_rss = float('inf')
-        best_model = None
-        best_predictor = None
+    for i, label in enumerate(labels):
+        word_ids = encodings.word_ids(batch_index=i)  # Map tokens to words
+        label_ids = []
+        previous_word_idx = None
 
-        for predictor in remaining_predictors:
-            predictors_current = predictors_forward + [predictor]
-            X_train = self.add_constant_to_data(self.train_data[predictors_current])
-            model = self.train_model(X_train, self.train_data['mpg'])
-            rss = self.calculate_rss(model, X_train, self.train_data['mpg'])
+        # Truncate word_ids to max_length
+        word_ids = word_ids[:max_length]
 
-            if rss < best_rss:
-                best_rss = rss
-                best_model = model
-                best_predictor = predictor
+        for word_idx in word_ids:
+            if word_idx is None:
+                label_ids.append(-100)  # Ignored by the loss function
+            elif word_idx != previous_word_idx:  # First token of the word
+                # Ensure index does not go out of range
+                if word_idx < len(label):
+                    label_ids.append(label[word_idx])
+                else:
+                    label_ids.append(-100)  # If label is out of range
+            else:
+                label_ids.append(-100)  # Assign -100 to subword tokens
+            previous_word_idx = word_idx
 
-        return best_model, best_predictor
+        # Handle cases where label_ids might not align with word_ids
+        if len(label_ids) < max_length:
+            label_ids += [-100] * (max_length - len(label_ids))
 
-    def forward_stepwise_selection(self):
-        predictors_forward = []
-        remaining_predictors = list(self.data.columns)
-        remaining_predictors.remove('mpg')  # Assuming 'mpg' is the target variable
-        chosen_models = []
+        encoded_labels.append(label_ids)
 
-        while remaining_predictors:
-            model, predictor = self.select_best_predictor(predictors_forward, remaining_predictors)
-            predictors_forward.append(predictor)
-            remaining_predictors.remove(predictor)
-            chosen_models.append(model)
+    # Add the aligned labels to the tokenized encodings
+    encodings['labels'] = encoded_labels
+    return encodings
 
-        return chosen_models, predictors_forward
+Key Changes:
+        1.        Bounds Check: Before accessing label[word_idx], ensure that word_idx < len(label). If word_idx exceeds the length of label, append -100.
+        2.        Consistent Label Length: Ensure that label_ids matches the length of word_ids by padding it with -100 as necessary.
 
-    def evaluate_models_on_test_data(self, chosen_models, predictors_forward):
-        best_test_rss = float('inf')
-        best_model_index = -1
+Explanation:
+        •        The word_ids array can have more elements than label due to tokenization and padding.
+        •        By adding a boundary check, we prevent accessing out-of-range indices in label.
+        •        -100 is added for any mismatched lengths to ensure the model ignores these tokens during training.
 
-        for i, model in enumerate(chosen_models):
-            predictors = ['const'] + predictors_forward[:i+1]
-            X_test = self.add_constant_to_data(self.test_data[predictors])
-            test_rss = self.calculate_rss(model, X_test, self.test_data['mpg'])
-
-            if test_rss < best_test_rss:
-                best_test_rss = test_rss
-                best_model_index = i
-
-        return best_model_index, best_test_rss
-
-    def run(self):
-        self.split_data()
-
-        if self.train_data is not None and self.test_data is not None:
-            chosen_models, predictors_forward = self.forward_stepwise_selection()
-            best_model_index, best_test_rss = self.evaluate_models_on_test_data(chosen_models, predictors_forward)
-
-            print(f"The best model (index {best_model_index}) based on test RSS has a test RSS of: {best_test_rss:.2f}")
-
-
-# Example usage (assuming 'auto.csv' is in the same directory):
-selector = ForwardStepwiseSelector("auto.csv")
-selector.run()
-
-```
-
-**To make this code runnable, you'll need to:**
-
-1.  **Save the code:** Save the code above as a Python file (e.g., `forward_stepwise.py`).
-2.  **Download the dataset:** Download the `auto.csv` dataset.  Make sure that the `name` column is removed and it has a column named 'mpg' as the target variable. A working copy of the dataset can be found [here](https://www.google.com/url?sa=E&source=gmail&q=https://github.com/JWarmenhoven/ISLR-python/blob/master/Notebooks/Data/Auto.csv). Ensure it's in the same directory as your Python script or provide the correct path.
-3.  **Install libraries:** If you haven't already, install the necessary libraries using pip:  `pip install pandas numpy statsmodels scikit-learn`
-4.  **Run the script:** Execute the script from your terminal: `python forward_stepwise.py`
-
-The output will show the index of the best model and its corresponding test RSS.  Note that the specific output values may differ slightly depending on the contents of your "auto.csv" if it deviates from the standard `Auto` dataset in the ISLR Python repository. If no output is generated and the script does not terminate, it's likely due to the `auto.csv` file not being found or an issue in loading it. Review the error messages, verify the file path, and ensure the file is correctly formatted.
+This should resolve the IndexError.
 '''
 
 try:
     response = extract_solution(llm_response=llm_response)
-
     if not isinstance(response, list):
         raise ValueError(
             "Expected response to be a list of (file_name, code) tuples."
@@ -138,10 +100,12 @@ try:
             )
 
         # Proceed to write only if the file already exists
-        with open(file_name, "w", encoding="utf-8") as file:
+        with open(file_name, "w") as file:
             file.write(code)
-
         print(f"File '{file_name}' written successfully.")
+        break
+
+
 except FileNotFoundError as fnf_error:
     print(f"File error: {fnf_error}")
 

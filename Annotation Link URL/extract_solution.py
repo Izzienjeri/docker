@@ -17,17 +17,28 @@ def extract_code_blocks(markdown_text, language="python"):
 def extract_solution(llm_response: str) -> list[tuple[str, str]]:
     """Extract a list of file paths and code file contents.
 
-    Extracts a list of file paths and code file contents from any LLM's
-    response.
+    1. Attempts to extract code from Markdown-fenced blocks using extract_code_blocks.
+    2. If no code is found, tries a fallback regex that captures code
+       from 'from transformers' up to 'return encodings'.
 
     Args:
         llm_response: Any LLM's response to your concretized prompt.
 
     Returns:
-        A list of tuple (file_path, file_content) with the file path relative
-        to the current working directory and its content.
+        A list of tuple (file_path, code_content).
     """
-    code_solutions = extract_code_blocks(llm_response)
+    # First attempt: Use the function that extracts from fenced blocks
+    code_solutions = extract_code_blocks(llm_response, language="python")
 
-    return [("solution.py", code_solution) for code_solution in code_solutions]
+    if code_solutions:
+        # We found code via the Markdown fences
+        return [("solution.py", code) for code in code_solutions]
 
+    # A regex capturing the snippet from "from transformers" up to the closing line "return encodings".
+    fallback_pattern = re.compile(r"(from transformers.*?return encodings(?:\)|\n))", re.DOTALL)
+    match = fallback_pattern.search(llm_response)
+    if match:
+        code_solutions = [match.group(1)]
+        return [("solution.py", code) for code in code_solutions]
+
+    return []

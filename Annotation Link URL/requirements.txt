@@ -1,5 +1,2 @@
+transformers
 pytest
-pandas
-numpy
-statsmodels
-scikit-learn
