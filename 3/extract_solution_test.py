@@ -1,101 +1,99 @@
 import os
-
 from extract_solution import extract_solution
 
 llm_response = '''
 ```python
-import spacy
-from spacy.tokens import Span
+"""A Simple Address Book Implementation."""
 
-nlp = spacy.load("en_core_web_lg")
 
-unit_normalization = {
-    'g': 'gram', 'gram': 'gram', 'grams': 'gram',
-    'kg': 'kilogram', 'kilogram': 'kilogram', 'kgs': 'kilogram',
-    'mg': 'milligram', 'milligram': 'milligram', 'ml': 'milliliter', 'liter': 'liter', 'liters': 'liter',
-    'cm': 'centimeter', 'centimeter': 'centimeter', 'centimeters': 'centimeter',
-    'm': 'meter', 'meter': 'meter', 'meters': 'meter',
-    'mm': 'millimeter', 'millimeter': 'millimeter', 'oz': 'ounce', 'ounces': 'ounce',
-    'lb': 'pound', 'pounds': 'pound',
-    'v': 'volt', 'volts': 'volt',  # added lowercase 'v'
-    'w': 'watt', 'watts': 'watt'  # added lowercase 'w'
-}
+class AddressBook:
+    """Class to implement Address Book."""
 
-entity_unit_map = {
-    'width': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'depth': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'height': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'item_weight': {'gram', 'kilogram', 'microgram', 'milligram', 'ounce', 'pound', 'ton'},
-    'maximum_weight_recommendation': {'gram', 'kilogram', 'microgram', 'milligram', 'ounce', 'pound', 'ton'},
-    'voltage': {'kilovolt', 'millivolt', 'volt'},
-    'wattage': {'kilowatt', 'watt'},
-    'item_volume': {'centiliter', 'cubic foot', 'cubic inch', 'cup', 'deciliter', 'fluid ounce', 'gallon',
-                    'imperial gallon', 'liter', 'microliter', 'milliliter', 'pint', 'quart'}
-}
+    def __init__(self):
+        """Initialize an empty address book."""
+        self.address_book = {}
 
-def extract_entity_with_spacy(text: str, entity_name: str, entity_unit_map: dict) -> str:
-    doc = nlp(text)
-    for ent in doc.ents:
-        value = None
-        for token in ent:
-          if "-" in token.text and token.text[0].isdigit():
-            value = token.text.split("-")[-1]
-            break
-          elif token.like_num:
-            value = token.text
-            
-        if value:
-            unit = None
-            for token in ent:
-                next_token = token.nbor(1) if token.i + 1 < len(doc) else None
-                if next_token:
-                    normalized_unit = unit_normalization.get(next_token.text.lower(), next_token.text.lower())
-                    if normalized_unit in entity_unit_map.get(entity_name, []):
-                        unit = normalized_unit
-                        break
-            if unit:
-                return f'{value} {unit}'
-    return None
-```'''
+    def get(self):
+        """Get all records in the address book.
+
+        Returns:
+            A dictionary of all the records in the address book.
+            Returns empty dictionary if the address book is empty.
+        """
+        return self.address_book
+
+    def insert(self, name, phone, email, address):
+        """Add a new record to the address book.
+
+        Add a new record to the address book. Updates the existing fields if
+        the record exists.
+
+        Args:
+            name (str): The name of the contact.
+            phone (str): The phone number of the contact.
+            email (str): The email address of the contact.
+            address (str): The address of the contact.
+
+        Raises:
+            ValueError: If the value associated with the name or address
+                is empty or None.
+        """
+        if not name or not address:
+            raise ValueError("Name and address cannot be empty or None")
+
+        self.address_book[name] = {
+            "phone": phone,
+            "email": email,
+            "address": address,
+        }
+
+    def delete(self, name):
+        """Delete a record from the address book.
+
+        Args:
+            name (str): The name of the contact to delete.
+
+        Raises:
+            KeyError: If the record does not exist in the address book.
+        """
+        if name not in self.address_book:
+            raise KeyError(f"Record for {name} does not exist")
+
+        del self.address_book[name]
+```
+'''
 
 try:
-
     response = extract_solution(llm_response=llm_response)
 
     if not isinstance(response, list):
-
-        raise ValueError("Expected response to be a list of (file_name, code) tuples.")
+        raise ValueError(
+            "Expected response to be a list of (file_name, code) tuples."
+        )
 
     for item in response:
 
         if not isinstance(item, tuple) or len(item) != 2:
-
             raise ValueError("Invalid tuple.")
 
         file_name, code = item
 
         # Check if the file itself exists
-
         if not os.path.isfile(file_name):
-
             raise FileNotFoundError(
-
-                f"The file '{file_name}' does not exist. Please check the path."
-
+                f"The file '{file_name}' does not exist. "
+                "Please check the path."
             )
 
         # Proceed to write only if the file already exists
-
         with open(file_name, "w") as file:
-
             file.write(code)
 
         print(f"File '{file_name}' written successfully.")
 
-except FileNotFoundError as fnf_error:
 
+except FileNotFoundError as fnf_error:
     print(f"File error: {fnf_error}")
 
 except Exception as e:
-
     print(f"An error occurred while running extract solution test: {e}")

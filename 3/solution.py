@@ -1,47 +1,132 @@
-import spacy
-from spacy.tokens import Span
-nlp = spacy.load("en_core_web_lg")
-unit_normalization = {
-    'g': 'gram', 'gram': 'gram', 'grams': 'gram',
-    'kg': 'kilogram', 'kilogram': 'kilogram', 'kgs': 'kilogram',
-    'mg': 'milligram', 'milligram': 'milligram', 'ml': 'milliliter', 'liter': 'liter', 'liters': 'liter',
-    'cm': 'centimeter', 'centimeter': 'centimeter', 'centimeters': 'centimeter',
-    'm': 'meter', 'meter': 'meter', 'meters': 'meter',
-    'mm': 'millimeter', 'millimeter': 'millimeter', 'oz': 'ounce', 'ounces': 'ounce',
-    'lb': 'pound', 'pounds': 'pound',
-    'v': 'volt', 'volts': 'volt',  # Added lowercase 'v'
-    'w': 'watt', 'watts': 'watt'
-}
-entity_unit_map = {
-    'width': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'depth': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'height': {'centimeter', 'foot', 'inch', 'meter', 'millimeter', 'yard'},
-    'item_weight': {'gram', 'kilogram', 'microgram', 'milligram', 'ounce', 'pound', 'ton'},
-    'maximum_weight_recommendation': {'gram', 'kilogram', 'microgram', 'milligram', 'ounce', 'pound', 'ton'},
-    'voltage': {'kilovolt', 'millivolt', 'volt'},
-    'wattage': {'kilowatt', 'watt'},
-    'item_volume': {'centiliter', 'cubic foot', 'cubic inch', 'cup', 'deciliter', 'fluid ounce', 'gallon',
-                    'imperial gallon', 'liter', 'microliter', 'milliliter', 'pint', 'quart'}
-}
-def extract_entity_with_spacy(text: str, entity_name: str, entity_unit_map: dict) -> str:
-    """
-    Extracts entity values and units from the text using spaCy NER.
-    Args:
-        text: The input text.
-        entity_name: The name of the entity to extract.
-        entity_unit_map: A dictionary mapping entity names to valid units.
-    Returns:
-        A string representing the extracted entity value and unit, or None if not found.
-    """
-    doc = nlp(text)
-    for token in doc:
-        if token.like_num:
-            value = token.text
-            if '-' in value:  # Handle ranges
-                value = value.split('-')[-1] # Get max value
-            next_token = token.nbor(1) if token.i + 1 < len(doc) else None
-            if next_token:
-                normalized_unit = unit_normalization.get(next_token.text.lower(), next_token.text.lower())
-                if normalized_unit in entity_unit_map.get(entity_name, []):
-                    return f'{value} {normalized_unit}'
-    return None
+"""A Simple Address Book Implementation."""
+
+
+class AddressBook:
+    """Class to implement Address Book."""
+
+    def __init__(self):
+        """Initialize an empty address book."""
+        self.address_book = {}
+
+    def get(self):
+        """Get all records in the address book.
+
+        Returns:
+            A dictionary of all the records in the address book.
+            Returns empty dictionary if the address book is empty.
+        """
+        return self.address_book
+
+    def insert(self, name, phone, email, address):
+        """Add a new record to the address book.
+
+        Add a new record to the address book. Updates the existing fields if
+        the record exists.
+
+        Args:
+            name (str): The name of the contact.
+            phone (str): The phone number of the contact.
+            email (str): The email address of the contact.
+            address (str): The address of the contact.
+
+        Raises:
+            ValueError: If the value associated with the name or address
+                is empty or None.
+        """
+        if not name or not address:
+            raise ValueError("Name and address cannot be empty or None")
+
+        self.address_book[name] = {
+            "phone": phone,
+            "email": email,
+            "address": address,
+        }
+
+    def delete(self, name):
+        """Delete a record from the address book.
+
+        Args:
+            name (str): The name of the contact to delete.
+
+        Raises:
+            KeyError: If the record does not exist in the address book.
+        """
+        if name not in self.address_book:
+            raise KeyError(f"Record for {name} does not exist")
+
+        del self.address_book[name]
+
+
+if __name__ == "__main__":
+    address_book = AddressBook()
+
+    # Sample data for insertion
+    valid_data = [
+        ("John Doe", "123-456-7890", "john.doe@example.com", "123 Main St"),
+        (
+            "Jane Smith",
+            "987-654-3210",
+            "jane.smith@example.com",
+            "456 Oak Ave",
+        ),
+        (
+            "Peter Jones",
+            "555-123-4567",
+            "peter.jones@example.com",
+            "789 Pine Ln",
+        ),
+    ]
+
+    # Insert valid data
+    for name, phone, email, address in valid_data:
+        address_book.insert(name, phone, email, address)
+
+    # Test get() method
+    print(address_book.get())
+
+    # Expected output (order might vary):
+    # {'John Doe': {'phone': '123-456-7890', 'email': 'john.doe@example.com',
+    # 'address': '123 Main St'},
+    #  'Jane Smith': {'phone': '987-654-3210', 'email': '
+    # jane.smith@example.com', 'address': '456 Oak Ave'},
+    #  'Peter Jones': {'phone': '555-123-4567', 'email':
+    # 'peter.jones@example.com', 'address': '789 Pine Ln'}}
+
+    # Test delete() method
+    address_book.delete("Jane Smith")
+    print(address_book.get())
+    # Expected output (order might vary):
+    # {'John Doe': {'phone': '123-456-7890', 'email': 'john.doe@example.com',
+    # 'address': '123 Main St'},
+    #  'Peter Jones': {'phone': '555-123-4567', 'email':
+    # 'peter.jones@example.com', 'address': '789 Pine Ln'}}
+
+    address_book = AddressBook()
+
+    # Empty name
+    try:
+        address_book.insert(
+            "", "123-456-7890", "john.doe@example.com", "123 Main St"
+        )
+    except ValueError as e:
+        print(f"Caught expected ValueError: {e}")
+
+    # Empty address
+    try:
+        address_book.insert(
+            "John Doe", "123-456-7890", "john.doe@example.com", ""
+        )
+    except ValueError as e:
+        print(f"Caught expected ValueError: {e}")
+
+    # Delete non-existent record
+    try:
+        address_book.delete("NonExistent")
+    except KeyError as e:
+        print(f"Caught expected KeyError: {e}")
+
+    # Insert with None values for optional fields
+    address_book.insert("John Doe", None, None, "123 Main St")
+    print(address_book.get())
+    # Expected output (order might vary):
+    # {'John Doe': {'phone': None, 'email': None, 'address': '123 Main St'}}
