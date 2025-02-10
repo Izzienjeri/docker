@@ -1,20 +1,7 @@
-def p(arr: list[int]) -> list[int]:
-    """
-    Given an array arr of integers, find all the elements that occur more than once in the array.
-    Return the result in ascending order. If no element repeats, return an empty array.
+import pandas as pd
 
-    For example:
-    find_duplicates([1, 2, 3, 1, 2, 4, 5]) == [1, 2]
-    find_duplicates([1, 2, 3, 4, 5]) == []
-    find_duplicates([1, 1, 1, 2, 2, 3]) == [1, 2]
-    """
-    counts = {}
-    duplicates = set()
+data = {'Company': ['Indian Hotels Co', 'EIH', 'Chalet Hotels', 'Lemon Tree Hotel', 'Juniper Hotels', 'Mahindra Holiday', 'ITC', 'Samhi Hotels', 'Apeejay Surrend.', 'Oriental Hotels', 'EIH Assoc.Hotels', 'Praveg', 'TajGVK Hotels', 'HLV', 'Royal Orch.Hotel'],
+        'Market Cap (Crores)': [99790.22, 24121.28, 19540.15, 10335.65, 8654.17, 8575.87, 5927.11, 4622.44, 3710.79, 2961.54, 2605.66, 2198.28, 2040.62, 1289.51, 1030.10]}
 
-    for num in arr:
-        if num in counts:
-            duplicates.add(num)
-        else:
-            counts[num] = 1
-
-    return sorted(list(duplicates))
+df = pd.DataFrame(data)
+print(df)

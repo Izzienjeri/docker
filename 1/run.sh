@@ -1,2 +1,5 @@
+# run.sh 
 #!/bin/bash
-npm run test
+
+# Run the tests
+pytest -v eval.py

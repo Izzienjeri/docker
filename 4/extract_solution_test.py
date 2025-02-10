@@ -1,52 +1,46 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jan 19 18:56:16 2025
-
-@author: wolfk
-"""
-
 import os
 from extract_solution import extract_solution
 
-llm_response = '''
+llm_response = r'''
 ```python
-class data_reconstructor(gr.sync_block):
-    """Corrected Mock Data Reconstructor Block"""
-
-    def __init__(self):
-        """Initialize the block with two inputs and one output"""
-        gr.sync_block.__init__(
-            self,
-            name='Data Reconstructor',
-            in_sig=[np.uint8, np.uint8],
-            out_sig=[np.uint8]
-        )
-
-    def work(self, input_items, output_items):
-        """Merge two input channels into a single output channel"""
-        ch1_in = input_items[0]
-        ch2_in = input_items[1]
-        data_out = output_items[0]
-
-        min_len = min(len(ch1_in), len(ch2_in))
-        
-        # Interleave elements up to the length of the shorter input
-        data_out[:min_len*2] = np.column_stack((ch1_in[:min_len], ch2_in[:min_len])).ravel()
-
-        # Append remaining elements from the longer input
-        if len(ch1_in) > min_len:
-            data_out[min_len*2:len(ch1_in) + min_len] = ch1_in[min_len:]
-        elif len(ch2_in) > min_len:
-            data_out[min_len*2:len(ch2_in) + min_len] = ch2_in[min_len:]
-
-        # Calculate the actual return length
-        return_len = len(ch1_in) + len(ch2_in)
-
-        # Resize the output_items[0] array to store only valid data
-        output_items[0] = data_out[:return_len].copy()
-
-        return return_len
-```'''
+import cv2
+import cv2.aruco as aruco
+import os
+from typing import Any
+def generate_aruco_marker(
+    marker_id: Any,
+    dictionary_id: Any,
+    output_folder: str = "aruco_markers",
+    marker_size: int = 200
+) -> None:
+    """
+    Generates and saves an ArUco marker image.
+    Args:
+        marker_id: The ID of the marker to generate.
+        dictionary_id: The ArUco dictionary to use (e.g., aruco.DICT_6X6_250).
+        output_folder: The folder to save the marker image to.
+        marker_size: The size (in pixels) of the output marker image.
+    """
+    dictionary = aruco.Dictionary_get(dictionary_id)
+    marker_image = aruco.drawMarker(dictionary, marker_id, marker_size)
+    # Ensure the output directory exists
+    os.makedirs(output_folder, exist_ok=True)
+    output_filename = os.path.join(output_folder, f"marker_{marker_id}.png")
+    cv2.imwrite(output_filename, marker_image)
+    print(f"Marker saved to: {output_filename}")
+# Example usage:
+generate_aruco_marker(marker_id=1, dictionary_id=aruco.DICT_6X6_250)
+generate_aruco_marker(marker_id=50, dictionary_id=aruco.DICT_4X4_50, marker_size=250)
+generate_aruco_marker(marker_id=10, dictionary_id=aruco.DICT_5X5_100, output_folder="custom_markers")
+```
+Key improvements in this code:
+* **Type Hinting:** Added type hints (`Any`, `str`, `int`) for better readability and maintainability.  While `marker_id` and `dictionary_id` could be more specific, `Any` allows flexibility.  Consider using `int` if you're only working with integer IDs.
+* **Output Folder Handling:**  Uses `os.makedirs(output_folder, exist_ok=True)` to create the output directory if it doesn't exist, preventing errors.
+* **Clearer Output:**  Prints a message indicating where the marker image was saved.
+* **Example Usage:** Demonstrates how to use the function with different parameters, including a custom output folder.
+* **Docstring Enhancement:** The docstring is more comprehensive and clearly explains the function's purpose and parameters.
+This revised code is more robust, user-friendly, and follows best practices.  It's now ready to be used reliably to generate ArUco markers.
+'''
 
 try:
     response = extract_solution(llm_response=llm_response)
@@ -78,3 +72,4 @@ except FileNotFoundError as fnf_error:
 
 except Exception as e:
     print(f"An error occurred while running extract solution test: {e}")
+

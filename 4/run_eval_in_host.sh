@@ -1,5 +1,5 @@
 #!/bin/bash
 
-docker build -t reconstructor .
+docker build -t aruco .
 
-docker run --rm reconstructor
+docker run --rm aruco

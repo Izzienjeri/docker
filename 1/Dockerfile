@@ -1,13 +1,14 @@
-FROM node:23-alpine
+# Use an official Python runtime as the base image
+FROM python:3.9-slim
 
-WORKDIR /usr/src/app
+# Set the working directory in the container
+WORKDIR /app
 
-RUN apk update && apk add bash
-
-COPY package*.json ./
-
-RUN npm install
-
+# Copy the contents of the current directory
 COPY . .
 
+# Install any necessary dependencies 
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Command to run scripts
 CMD ["/bin/bash", "run.sh"]

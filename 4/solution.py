@@ -1,49 +1,38 @@
-import numpy as np
-from gnuradio import gr
+import cv2
+import cv2.aruco as aruco
+import os
 
-class blk(gr.sync_block):
-  """Data Splitter Block - Splits input data into two channels"""
-  def __init__(self):
-    """Initialize the block with one input and two outputs"""
-    gr.sync_block.__init__(
-      self,
-      name='Data Splitter',
-      in_sig=[np.uint8],  
-      out_sig=[np.uint8, np.uint8]
-    )
-  def work(self, input_items, output_items):
-    """Split input data into two channels"""
-    data_in = input_items[0]  
-    ch1_out = output_items[0]  
-    ch2_out = output_items[1]  
-    ch1_data = data_in[::2]   
-    ch2_data = data_in[1::2]  
-    ch1_out[:len(ch1_data)] = ch1_data
-    ch2_out[:len(ch2_data)] = ch2_data
-    return len(ch1_data)
+def generate_aruco_marker(
+    marker_id: int,
+    dictionary_id: int,
+    output_folder: str = "aruco_markers",
+    marker_size: int = 200
+) -> None:
+    """
+    Generates and saves an ArUco marker image.
+    
+    Args:
+        marker_id: The ID of the marker to generate.
+        dictionary_id: The ArUco dictionary to use (e.g., aruco.DICT_6X6_250).
+        output_folder: The folder to save the marker image to.
+        marker_size: The size (in pixels) of the output marker image.
+    """
+    # Create the directory if it doesn't exist
+    os.makedirs(output_folder, exist_ok=True)
+    
+    # Get the ArUco dictionary
+    dictionary = aruco.Dictionary_get(dictionary_id)
+    
+    # Generate the marker image
+    marker_image = aruco.drawMarker(dictionary, marker_id, marker_size)
+    
+    # Create the output filename
+    output_filename = os.path.join(output_folder, f"marker_{marker_id}.png")
+    
+    # Save the marker image
+    cv2.imwrite(output_filename, marker_image)
+    
+    print(f"Marker {marker_id} saved to {output_filename}")
 
-class data_reconstructor(gr.sync_block):
-    """Data Reconstructor Block - Merges two input channels into a single output channel"""
-    def __init__(self):
-        """Initialize the block with two inputs and one output"""
-        gr.sync_block.__init__(
-            self,
-            name='Data Reconstructor',
-            in_sig=[np.uint8, np.uint8],
-            out_sig=[np.uint8]
-        )
-    def work(self, input_items, output_items):
-        """Merge two input channels into a single output channel"""
-        in0 = input_items[0]
-        in1 = input_items[1]
-        out = output_items[0]
-        min_len = min(len(in0), len(in1))
-        data_out = np.empty(min_len * 2, dtype=np.uint8)
-        data_out[::2] = in0[:min_len]
-        data_out[1::2] = in1[:min_len]
-        if len(in0) > len(in1):
-            data_out = np.append(data_out, in0[min_len:])
-        elif len(in1) > len(in0):
-            data_out = np.append(data_out, in1[min_len:])
-        out[:len(data_out)] = data_out
-        return len(data_out)
+# Example usage:
+# generate_aruco_marker(42, aruco.DICT_6X6_250)

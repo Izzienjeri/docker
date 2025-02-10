@@ -1,93 +1,84 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Sun Jan 19 17:38:14 2025
-
-@author: wolfk
-"""
 import unittest
+import cv2
+import cv2.aruco as aruco
+import os
+from solution import generate_aruco_marker
+from pyfakefs import fake_filesystem_unittest
+import glob
 import numpy as np
-from solution import data_reconstructor, blk
 
-class TestDataReconstructor(unittest.TestCase):
+class TestGenerateArucoMarker(fake_filesystem_unittest.TestCase):
 
     def setUp(self):
-        self.block = data_reconstructor()
-
-    def test_basic_data_reconstruction(self):
-        # Test Case 1
-        ch1_output = np.array([2, 4, 6], dtype=np.uint8)
-        ch2_output = np.array([1, 3, 5], dtype=np.uint8)
-        expected_output = np.array([2, 1, 4, 3, 6, 5], dtype=np.uint8)
-        output_items = [np.zeros(len(expected_output), dtype=np.uint8)]
         
-        self.block.work([ch1_output, ch2_output], output_items)
-        self.assertTrue(np.array_equal(output_items[0], expected_output))
+        self.setUpPyfakefs()
+        self.output_folder = "test_aruco_markers"
+        os.makedirs(self.output_folder)
+        self.original_imwrite = cv2.imwrite
+        self.original_imread = cv2.imread
 
-    def test_unequal_input_lengths(self):
-        # Test Case 2
-        ch1_output = np.array([2, 4, 6, 8], dtype=np.uint8)
-        ch2_output = np.array([1, 3, 5], dtype=np.uint8)
-        expected_output = np.array([2, 1, 4, 3, 6, 5, 8], dtype=np.uint8)
-        output_items = [np.zeros(len(expected_output), dtype=np.uint8)]
         
-        self.block.work([ch1_output, ch2_output], output_items)
-        self.assertTrue(np.array_equal(output_items[0], expected_output))
+        def fake_imwrite(filename, img):
+            
+            success, buffer = cv2.imencode('.png', img)
+            if success:
+                with open(filename, 'wb') as f:
+                    f.write(buffer.tobytes())
+                return True
+            return False
 
-    def test_empty_input_channels(self):
-        # Test Case 3
-        ch1_output = np.array([], dtype=np.uint8)
-        ch2_output = np.array([], dtype=np.uint8)
-        expected_output = np.array([], dtype=np.uint8)
-        output_items = [np.zeros(len(expected_output), dtype=np.uint8)]
+        
+        def fake_imread(filename, flags=cv2.IMREAD_COLOR):
+            with open(filename, 'rb') as f:
+                data = f.read()
+            arr = np.frombuffer(data, dtype=np.uint8)
+            return cv2.imdecode(arr, flags)
 
-        self.block.work([ch1_output, ch2_output], output_items)
-        self.assertTrue(np.array_equal(output_items[0], expected_output))
+        cv2.imwrite = fake_imwrite
+        cv2.imread = fake_imread
 
-    def test_single_element_in_each_channel(self):
-        # Test Case 4
-        ch1_output = np.array([2], dtype=np.uint8)
-        ch2_output = np.array([1], dtype=np.uint8)
-        expected_output = np.array([2, 1], dtype=np.uint8)
-        output_items = [np.zeros(len(expected_output), dtype=np.uint8)]
+    def tearDown(self):
+        cv2.imwrite = self.original_imwrite
+        cv2.imread = self.original_imread
 
-        self.block.work([ch1_output, ch2_output], output_items)
-        self.assertTrue(np.array_equal(output_items[0], expected_output))
-    
-    def test_longer_odd_input(self):
-        # Test Case 5
-        ch1_output = np.array([2, 4, 6], dtype=np.uint8)
-        ch2_output = np.array([1, 3, 5, 7], dtype=np.uint8)
-        expected_output = np.array([2, 1, 4, 3, 6, 5, 7], dtype=np.uint8)
-        output_items = [np.zeros(len(expected_output), dtype=np.uint8)]
-       
-        self.block.work([ch1_output, ch2_output], output_items)
-        self.assertTrue(np.array_equal(output_items[0], expected_output))
+    def get_first_file_in_folder(self, folder_path):
+        """Helper function to get the first file in a folder."""
+        files = glob.glob(os.path.join(folder_path, '*'))
+        files = [f for f in files if os.path.isfile(f)]
+        return files[0] if files else None
 
-    def test_data_splitter_to_data_reconstructor_flow(self):
-        # Test Case 6 
-        original_data = np.array([10, 20, 30, 40, 50, 60], dtype=np.uint8)
-        expected_output = original_data
+    def test_generate_aruco_marker(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+        generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
 
-        # Create splitter (blk) and reconstructor blocks
-        splitter = blk()  # Corrected to use blk
-        reconstructor = data_reconstructor()
+        first_file = self.get_first_file_in_folder(self.output_folder)
+        self.assertTrue(os.path.exists(first_file))
 
-        # Prepare input and output buffers
-        input_items_splitter = [original_data]
-        output_items_splitter = [np.zeros(len(original_data) // 2 + (len(original_data) % 2 != 0), dtype=np.uint8),
-                                 np.zeros(len(original_data) // 2, dtype=np.uint8)]
+        img = cv2.imread(first_file)
+        self.assertEqual(img.shape, (marker_size, marker_size, 3))
 
-        # Run the splitter (blk)
-        splitter.work(input_items_splitter, output_items_splitter)
+    def test_correct_return_type(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+        result = generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        self.assertIsNone(result)  
 
-        # Prepare input and output buffers for the reconstructor
-        input_items_reconstructor = output_items_splitter
-        output_items_reconstructor = [np.zeros(len(original_data), dtype=np.uint8)]
+    def test_populated_output_folder(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
 
-        # Run the reconstructor
-        reconstructor.work(input_items_reconstructor, output_items_reconstructor)
-        # Assert that the output matches the original data
-        self.assertTrue(np.array_equal(output_items_reconstructor[0], expected_output))
+        generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        first_file = self.get_first_file_in_folder(self.output_folder)
+
+        self.assertTrue(os.path.exists(self.output_folder))
+        self.assertTrue(len(os.listdir(self.output_folder)) > 0)  
+        self.assertTrue(os.path.exists(first_file))
 
 if __name__ == '__main__':
     unittest.main()
+
+
