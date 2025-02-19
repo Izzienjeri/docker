@@ -1,68 +1,59 @@
 import os
+import json
 from extract_solution import extract_solution
 
 llm_response = '''
-Here is the implementation for the function `get_current_time`: 
+The error "NameError: name 'string' is not defined" occurs because you're using the `string` module without importing it first.  Here's the corrected and complete code:
 
 ```python
-from datetime import datetime, timedelta, timezone
+import string
 
-def get_current_time(timezone_offset: int) -> str:
-    """Return the current date and time for the specified timezone offset.
+def read_book(filename):
+  """Reads a text file and returns a list of words."""
 
-    Args:
-        timezone_offset (int): The offset from UTC in hours.
+  with open(filename, 'r', encoding='utf-8') as f:
+    text = f.read()
 
-    Raises:
-        ValueError: If `timezone_offset` is not an integer or is out of the 
-            valid range (-24 to +24).
+  words = text.split()
+  return words
 
-    Returns:
-        str: A string containing the current date and time formatted
-        as "YYYY-MM-DD HH:MM:SS".
-    """
-    if not isinstance(timezone_offset, int) or not -24 <= timezone_offset <= 24:
-        raise ValueError("Timezone offset must be an integer between -24 and +24.")
+def clean_word(word):
+  """Cleans a word by removing punctuation and converting to lowercase."""
 
-    # Create a timezone object with the specified offset
-    tz = timezone(timedelta(hours=timezone_offset))
-    
-    # Get the current time in the specified timezone
-    current_time = datetime.now(tz)
+  word = word.strip(string.punctuation)
+  return word.lower()
 
-    # Format and return the date and time as a string
-    return current_time.strftime("%Y-%m-%d %H:%M:%S")
 
-# Example usage:
+# Example Usage:
+filename = 'your_book.txt'  # Replace with the actual filename
+
 try:
-    print(get_current_time(5))  # For UTC+5
-    print(get_current_time(-3))  # For UTC-3
-except ValueError as e:
-    print(e)
+    words = read_book(filename)
+    clean_words = [clean_word(word) for word in words]
+
+    # You can now process the 'clean_words' list
+    # For example, print the first 20 cleaned words:
+    print(clean_words[:20])
+
+except FileNotFoundError:
+    print(f"Error: File '{filename}' not found.  Make sure the file exists and the filename is correct.")
+except Exception as e:
+    print(f"An error occurred: {e}")
 ```
 
-### Explanation:
-1. **Input Validation**:
-   - Ensures the `timezone_offset` is an integer within the valid range (-24 to +24). Raises a `ValueError` if it's not.
+**Before running:**
 
-2. **Timezone Creation**:
-   - Uses `timedelta(hours=timezone_offset)` to create a `timezone` object representing the offset from UTC.
+1. **Make sure you have a file named `your_book.txt` (or whatever you named it) in the same directory as your Python script.**  You need to download a book from Project Gutenberg (or a similar source) and save it as a text file.
+2. **Replace `'your_book.txt'` in the code above with the actual filename of your downloaded book.**
 
-3. **Current Time**:
-   - Fetches the current time adjusted to the specified timezone using `datetime.now(tz)`.
-
-4. **Formatting**:
-   - Formats the datetime into a string in the format "YYYY-MM-DD HH:MM:SS" using `strftime`. 
-
-This function is robust for general use and will handle invalid inputs appropriately.
+**Key change:**  The line `import string` has been added at the beginning of the script.  This imports the necessary module so that `string.punctuation` is defined and accessible within the `clean_word` function. I've also included error handling to make the script more robust.
 '''
 
 try:
     response = extract_solution(llm_response=llm_response)
 
     if not isinstance(response, list):
-        raise ValueError("Expected response to be a list of"
-                         "(file_name, code) tuples.")
+        raise ValueError("Expected response to be a list of (file_name, code) tuples.")
 
     for item in response:
 
@@ -71,21 +62,16 @@ try:
 
         file_name, code = item
 
-        # Check if the file itself exists
-        if not os.path.isfile(file_name):
-            raise FileNotFoundError(
-                f"The file '{file_name}' does not exist."
-                f"Please check the path."
-            )
-
         # Proceed to write only if the file already exists
         with open(file_name, "w") as file:
             file.write(code)
 
         print(f"File '{file_name}' written successfully.")
+        break
 
 except FileNotFoundError as fnf_error:
     print(f"File error: {fnf_error}")
 
 except Exception as e:
     print(f"An error occurred while running extract solution test: {e}")
+

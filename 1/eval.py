@@ -1,91 +1,120 @@
-"""Unit tests for the get_current_time function."""
+"""This file contains the tests of the golden solution."""
+import os
+import unittest
+from solution import clean_word, read_book
 
-import pytest
-from datetime import datetime, timezone
-from unittest.mock import patch
-from solution import get_current_time
+class TestTextProcessing(unittest.TestCase):
+    """Unit tests for text processing functions."""
 
-# Store the module name dynamically
-MODULE_NAME = get_current_time.__module__
+    def test_basic_punctuation_removal(self):
+        """Test with basic punctuation at the end."""
+        words = ["hello!", "world,", "test.", "example?", "clean"]
+        expected = ['hello', 'world', 'test', 'example', 'clean']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
+    def test_no_punctuation(self):
+        """Test with no punctuation."""
+        words = ["hello", "world", "test", "example", "clean"]
+        expected = ['hello', 'world', 'test', 'example', 'clean']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-class TestCurrentTime:
-    """Test suite for the get_current_time function."""
+    def test_words_with_only_punctuation(self):
+        """Test with only punctuation."""
+        words = ["!", ",", ".", "?"]
+        expected = ['', '', '', '']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-    # Class-level constant
-    MOCK_NOW = datetime(2024, 12, 23, 16, 18, 0, tzinfo=timezone.utc)
+    def test_mixed_punctuation_start_end(self):
+        """Test with mixed punctuation at start and end."""
+        words = ["!hello", "world!", ",test.", "?example"]
+        expected = ['hello', 'world', 'test', 'example']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-    @pytest.fixture
-    def mock_datetime_now(self):
-        """Fixture to mock the datetime.now() function.
+    def test_empty_word_list(self):
+        """Test with an empty list of words."""
+        words = []
+        expected = []
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-        Returns a mock datetime object with a fixed time.
-        """
-        with patch(f"{MODULE_NAME}.datetime") as mock_datetime:
-            mock_datetime.now.return_value = self.MOCK_NOW
-            mock_datetime.side_effect = datetime
-            yield
+    def test_words_with_hyphens_apostrophes(self):
+        """Test words with hyphens and apostrophes."""
+        words = ["hello-world", "it's", "test-case"]
+        expected = ['hello-world', "it's", 'test-case']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-    def test_valid_timezone_offset_positive(self, mock_datetime_now):
-        """Test get_current_time with a valid positive timezone offset (+5).
+    def test_words_with_repeated_punctuation(self):
+        """Test words with repeated punctuation."""
+        words = ["!!hello!!", ",,world,,", "..test..", "??example??"]
+        expected = ['hello', 'world', 'test', 'example']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-        Verifies that the function correctly adjusts time forward by 5 hours.
-        """
-        result = get_current_time(5)
-        expected_time = "2024-12-23 21:18:00"
-        assert result == expected_time
+    def test_words_with_embedded_punctuation(self):
+        """Test words with embedded punctuation."""
+        words = ["he!llo", "wo,rld", "te.st", "ex?ample"]
+        expected = ['he!llo', 'wo,rld', 'te.st', 'ex?ample']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-    def test_valid_timezone_offset_negative(self, mock_datetime_now):
-        """Test get_current_time with a valid negative timezone offset (-8).
+    def test_words_with_all_numbers(self):
+        """Test words with only numbers."""
+        words = ["1", "2", "3", "4"]
+        expected = ['1', '2', '3', '4']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-        Verifies that the function correctly adjusts time backward by 8 hours.
-        """
-        result = get_current_time(-8)
-        expected_time = "2024-12-23 08:18:00"
-        assert result == expected_time
+    def test_words_with_alphanumeric_number(self):
+        """Test words with alphanumeric and numbers."""
+        words = ["hello1", "2world"]
+        expected = ['hello1', '2world']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
-    def test_invalid_timezone_offset_non_integer(self):
-        """Test get_current_time with an invalid non-integer input.
-
-        Verifies that the function raises ValueError for string input.
-        """
-        with pytest.raises(ValueError):
-            get_current_time("5")
-
-    def test_invalid_timezone_offset_out_of_range_below(self):
-        """Test get_current_time with timezone offset below valid range (-25).
-
-        Verifies that the function raises ValueError for offsets less than -24.
-        """
-        with pytest.raises(ValueError):
-            get_current_time(-25)
-
-    def test_invalid_timezone_offset_out_of_range_above(self):
-        """Test get_current_time with timezone offset above valid range (+25).
-
-        Verifies that function raises ValueError for offsets greater than +24.
-        """
-        with pytest.raises(ValueError):
-            get_current_time(25)
-
-    def test_valid_timezone_offset_negative_24(self, mock_datetime_now):
-        """Test get_current_time with edge case timezone offset (-24).
-
-        Verifies that the function handles the minimum valid offset correctly.
-        """
-        result = get_current_time(-24)
-        expected_time = "2024-12-22 16:18:00"
-        assert result == expected_time
-
-    def test_valid_timezone_offset_positive_24(self, mock_datetime_now):
-        """Test get_current_time with edge case timezone offset (+24).
-
-        Verifies that the function handles the maximum valid offset correctly.
-        """
-        result = get_current_time(24)
-        expected_time = "2024-12-24 16:18:00"
-        assert result == expected_time
+    def test_words_with_special_characters(self):
+        """Test words with special characters."""
+        words = ["#$%", "%^&$"]
+        expected = ['', '']
+        cleaned_words = [clean_word(word) for word in words]
+        self.assertEqual(cleaned_words, expected)
 
 
-if __name__ == "__main__":
-    pytest.main([__file__, '-v'])
+class TestFileProcessing(unittest.TestCase):
+    """Unit tests for the file processing function."""
+
+    def setUp(self):
+        """Set up for test methods."""
+        self.test_file = "test_book.txt"
+        with open(self.test_file, "w", encoding="utf-8") as f:
+            f.write("This is a test. It has multiple lines.\nAnd some words.")
+
+    def tearDown(self):
+        """Tear down for test methods."""
+        if os.path.exists(self.test_file):
+            os.remove(self.test_file)
+
+    def test_read_book_valid_file(self):
+        """Test reading a valid file."""
+        expected_words = [
+            "This", "is", "a", "test.", "It", "has", "multiple",
+            "lines.", "And", "some", "words."
+        ]
+        actual_words = read_book(self.test_file)
+        self.assertEqual(actual_words, expected_words)
+
+    def test_read_book_empty_file(self):
+        """Test reading an empty file."""
+        empty_file = "empty_book.txt"
+        open(empty_file, 'w').close()  # Create an empty file
+        self.addCleanup(os.remove, empty_file)  # Clean up after test
+        words = read_book(empty_file)
+        self.assertEqual(words, [])
+
+
+if __name__ == '__main__':
+    unittest.main(verbosity=2)
