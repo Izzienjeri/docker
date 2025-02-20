@@ -1,20 +1,17 @@
+# Use an official Python runtime as the base image
 FROM python:3.9-slim
 
+# Set the working directory in the container
 WORKDIR /app
 
-COPY . /app
+# Copy the contents of the current directory
+COPY . .
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y libgl1 libglib2.0-0 && rm -rf /var/lib/apt/lists/*
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip
+# Install any necessary dependencies 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY run.sh .
-
-# Grant execute permission to run.sh
+# Make the script executable
 RUN chmod +x run.sh
 
+# Command to run scripts
 CMD ["./run.sh"]
-

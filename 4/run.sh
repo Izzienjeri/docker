@@ -1,2 +1,4 @@
 #!/bin/bash
-pytest eval.py
+
+# Run the tests
+pytest eval.py -v

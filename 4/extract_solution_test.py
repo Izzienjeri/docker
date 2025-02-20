@@ -1,52 +1,160 @@
+"""Testing exatract_solution."""
 import os
 from extract_solution import extract_solution
 
 llm_response = r'''
 ```python
-import cv2
-import cv2.aruco as aruco
-import os
-from typing import Any
-def generate_aruco_marker(
-    marker_id: Any,
-    dictionary_id: Any,
-    output_folder: str = "aruco_markers",
-    marker_size: int = 200
-) -> None:
+import pandas as pd
+from scipy.stats import pearsonr, spearmanr
+
+def calculate_user_trait_correlations():
     """
-    Generates and saves an ArUco marker image.
-    Args:
-        marker_id: The ID of the marker to generate.
-        dictionary_id: The ArUco dictionary to use (e.g., aruco.DICT_6X6_250).
-        output_folder: The folder to save the marker image to.
-        marker_size: The size (in pixels) of the output marker image.
+    Calculate Pearson and Spearman correlations between dissemination order and user personality traits.
+
+    Returns:
+        pd.DataFrame: DataFrame containing the correlation results, indexed by userId and trait.
     """
-    dictionary = aruco.Dictionary_get(dictionary_id)
-    marker_image = aruco.drawMarker(dictionary, marker_id, marker_size)
-    # Ensure the output directory exists
-    os.makedirs(output_folder, exist_ok=True)
-    output_filename = os.path.join(output_folder, f"marker_{marker_id}.png")
-    cv2.imwrite(output_filename, marker_image)
-    print(f"Marker saved to: {output_filename}")
-# Example usage:
-generate_aruco_marker(marker_id=1, dictionary_id=aruco.DICT_6X6_250)
-generate_aruco_marker(marker_id=50, dictionary_id=aruco.DICT_4X4_50, marker_size=250)
-generate_aruco_marker(marker_id=10, dictionary_id=aruco.DICT_5X5_100, output_folder="custom_markers")
+    # Load the data again
+    movies = pd.read_csv('movies.csv')
+    ratings = pd.read_csv('ratings.csv')
+    user_personality = pd.read_csv('user_personality.csv')
+
+    # Merge ratings with user personality scores
+    ratings = ratings.merge(user_personality, on='userId')
+
+    # Collect data, sort, and determine dissemination order (same logic as before)
+    # For example, sort ratings and assign dissemination_order:
+    ratings = ratings.sort_values(by=['userId', 'timestamp'])
+    ratings['dissemination_order'] = ratings.groupby('userId').cumcount() + 1
+
+    # Filter users with more than one rating to avoid ConstantInputWarning
+    ratings = ratings[ratings.groupby('userId')['movieId'].transform('size') > 1]
+
+    # Calculate correlation between dissemination order and personality scores
+    correlations = {}
+    for user_id, group in ratings.groupby('userId'):
+        user_correlations = {}
+        for trait in ['Extraversion', 'Agreeableness', 'Openness', 'Conscientiousness', 'Neuroticism']:
+            pearson_corr, _ = pearsonr(group['dissemination_order'], group[trait])
+            spearman_corr, _ = spearmanr(group['dissemination_order'], group[trait])
+            user_correlations[trait] = {'Pearson': pearson_corr, 'Spearman': spearman_corr}
+        correlations[user_id] = user_correlations
+
+    # Print the correlation results for each user
+    for user_id, corr_values in correlations.items():
+        print(f"User {user_id}:")
+        for trait, corr in corr_values.items():
+            print(f"  {trait}: Pearson correlation = {corr['Pearson']}, Spearman correlation = {corr['Spearman']}")
+
+    # Save the correlation results to a CSV file
+    correlation_df = pd.DataFrame.from_dict({(i, j): correlations[i][j]
+                                             for i in correlations.keys()
+                                             for j in correlations[i].keys()},
+                                            orient='index')
+    correlation_df.to_csv('user_correlation_results.csv', index=True)
+
+    return correlation_df
+
 ```
-Key improvements in this code:
-* **Type Hinting:** Added type hints (`Any`, `str`, `int`) for better readability and maintainability.  While `marker_id` and `dictionary_id` could be more specific, `Any` allows flexibility.  Consider using `int` if you're only working with integer IDs.
-* **Output Folder Handling:**  Uses `os.makedirs(output_folder, exist_ok=True)` to create the output directory if it doesn't exist, preventing errors.
-* **Clearer Output:**  Prints a message indicating where the marker image was saved.
-* **Example Usage:** Demonstrates how to use the function with different parameters, including a custom output folder.
-* **Docstring Enhancement:** The docstring is more comprehensive and clearly explains the function's purpose and parameters.
-This revised code is more robust, user-friendly, and follows best practices.  It's now ready to be used reliably to generate ArUco markers.
+
+```python
+import pandas as pd
+from scipy.stats import pearsonr, spearmanr
+
+def calculate_user_trait_correlations():
+    """
+    Calculate correlations between user personality traits and movie rating dissemination order.
+    
+    Returns:
+        pd.DataFrame: DataFrame containing the correlation results, indexed by userId and trait.
+    """
+    # Load the data
+    movies = pd.read_csv('movies.csv')
+    ratings = pd.read_csv('ratings.csv')
+    user_personality = pd.read_csv('user_personality.csv')
+    
+    # Merge ratings with user personality scores
+    ratings = ratings.merge(user_personality, on='userId')
+    
+    # Sort ratings by timestamp for each user
+    ratings = ratings.sort_values(['userId', 'timestamp'])
+    
+    # Add dissemination order column
+    ratings['dissemination_order'] = ratings.groupby('userId').cumcount() + 1
+    
+    # Filter users with more than one rating to avoid ConstantInputWarning
+    ratings = ratings[ratings.groupby('userId')['movieId'].transform('size') > 1]
+    
+    # Initialize dictionary to store correlations
+    correlations = {}
+    
+    # Calculate correlations for each user
+    personality_traits = ['Extraversion', 'Agreeableness', 'Openness', 
+                         'Conscientiousness', 'Neuroticism']
+    
+    for user_id, group in ratings.groupby('userId'):
+        user_correlations = {}
+        for trait in personality_traits:
+            # Calculate Pearson correlation
+            pearson_corr, p_value_pearson = pearsonr(group['dissemination_order'], 
+                                                    group[trait])
+            # Calculate Spearman correlation
+            spearman_corr, p_value_spearman = spearmanr(group['dissemination_order'], 
+                                                       group[trait])
+            
+            user_correlations[trait] = {
+                'Pearson': pearson_corr,
+                'Spearman': spearman_corr,
+                'Pearson_p_value': p_value_pearson,
+                'Spearman_p_value': p_value_spearman
+            }
+        correlations[user_id] = user_correlations
+    
+    # Create DataFrame from correlations dictionary
+    correlation_rows = []
+    for user_id, traits in correlations.items():
+        for trait, corr_values in traits.items():
+            row = {
+                'userId': user_id,
+                'trait': trait,
+                'pearson_correlation': corr_values['Pearson'],
+                'pearson_p_value': corr_values['Pearson_p_value'],
+                'spearman_correlation': corr_values['Spearman'],
+                'spearman_p_value': corr_values['Spearman_p_value']
+            }
+            correlation_rows.append(row)
+    
+    correlation_df = pd.DataFrame(correlation_rows)
+    
+    # Set multi-index for better organization
+    correlation_df = correlation_df.set_index(['userId', 'trait'])
+    
+    # Save results to CSV
+    correlation_df.to_csv('user_correlation_results.csv')
+    
+    # Print summary for each user
+    for user_id, user_data in correlation_df.groupby('userId'):
+        print(f"\nUser {user_id}:")
+        for idx, row in user_data.iterrows():
+            print(f"  {idx[1]}:")
+            print(f"    Pearson correlation = {row['pearson_correlation']:.3f} "
+                  f"(p-value = {row['pearson_p_value']:.3f})")
+            print(f"    Spearman correlation = {row['spearman_correlation']:.3f} "
+                  f"(p-value = {row['spearman_p_value']:.3f})")
+    
+    return correlation_df
+
+```
+
 '''
 
 try:
     response = extract_solution(llm_response=llm_response)
 
     if not isinstance(response, list):
-        raise ValueError("Expected response to be a list of (file_name, code) tuples.")
+        raise ValueError(
+            "Expected response to be a list of (file_name, code) tuples."
+        )
 
     for item in response:
 
@@ -58,11 +166,12 @@ try:
         # Check if the file itself exists
         if not os.path.isfile(file_name):
             raise FileNotFoundError(
-                f"The file '{file_name}' does not exist. Please check the path."
+                f"The file '{file_name}' does not exist. "
+                "Please check the path."
             )
 
         # Proceed to write only if the file already exists
-        with open(file_name, "w") as file:
+        with open(file_name, "w", encoding="utf-8") as file:
             file.write(code)
 
         print(f"File '{file_name}' written successfully.")
@@ -72,4 +181,3 @@ except FileNotFoundError as fnf_error:
 
 except Exception as e:
     print(f"An error occurred while running extract solution test: {e}")
-

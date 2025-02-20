@@ -1,5 +1,5 @@
-#!/bin/bash
+#Build the docker container
+docker build -t gemini .
 
-docker build -t aruco .
 
-docker run --rm aruco
+docker run --rm gemini
