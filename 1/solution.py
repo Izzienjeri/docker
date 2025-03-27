@@ -1,67 +1,96 @@
-import cv2
-import cv2.aruco as aruco
-import os
-from typing import Any
+import numpy as np
 
-def generate_aruco_marker(
-    marker_id: Any,
-    dictionary_id: Any,
-    output_folder: str = "aruco_markers",
-    marker_size: int = 200,
-) -> None:
+def midPtDerivBoolesRule(fun, limits, N, areas=False):
     """
-    Generates and saves an ArUco marker image.
+    Applies Zhao and Li's modified Boole's rule to approximate an integral.
 
     Args:
-        marker_id: The ID of the marker to generate.
-        dictionary_id: The ArUco dictionary to use (e.g., aruco.DICT_6X6_250).
-        output_folder: The folder to save the marker image to.
-        marker_size: The size (in pixels) of the output marker image.
+        fun: The function to integrate.
+        limits: A tuple representing the limits of integration (a, b).
+        N: The number of subintervals.
+        areas: A boolean indicating whether to return subinterval areas.
 
-    Raises:
-        TypeError: if an invalid dictionary id is used
-        ValueError: if the marker id is out of range for the given dictionary
-        ValueError: if the marker size is too small
-        ValueError: if the output folder is invalid
+    Returns:
+        If areas=False: The total numerical integral estimated value.
+        If areas=True: A tuple (x_coords, A) where:
+            - x_coords: Array of x-coordinates dividing the interval.
+            - A: Array of areas corresponding to each subinterval.
     """
 
-    # Create the output folder if it doesn't exist
-    if not output_folder:
-        raise ValueError("Output folder cannot be empty.")
-    os.makedirs(output_folder, exist_ok=True)
+    a, b = limits
+    delta_x = (b - a) / N
+    x_coords = np.linspace(a, b, N + 1)  # N+1 points for N subintervals
+    A = np.zeros(N)  # Array to store areas of each subinterval
 
-    # Get the ArUco dictionary
-    try:
-        aruco_dict = aruco.getPredefinedDictionary(dictionary_id)
-    except cv2.error as e:
-        raise TypeError("Invalid dictionary ID") from e
-    
-    # Check marker id range
-    try:
-        if not (0 <= marker_id < aruco_dict.bytesList.shape[0]):
-            raise ValueError(
-                f"Invalid marker ID. For this dictionary, marker ID must be between 0 and {aruco_dict.bytesList.shape[0] - 1}"
+    def central_difference_6th(f, x, delta):
+        """
+        Calculates the sixth derivative using central difference formula.
+        """
+        return (
+            f(x - 3 * delta)
+            - 6 * f(x - 2 * delta)
+            + 15 * f(x - delta)
+            - 20 * f(x)
+            + 15 * f(x + delta)
+            - 6 * f(x + 2 * delta)
+            + f(x + 3 * delta)
+        ) / (delta**6)
+
+    def modified_booles_rule(f, a, b):
+        """
+        Implements Zhao and Li's modified Boole's rule for a single subinterval.
+        """
+        h = (b - a) / 4
+        midpoint = (a + b) / 2
+        return (
+            (b - a)
+            / 90
+            * (
+                7 * f(a)
+                + 32 * f(a + 3 * h)
+                + 12 * f(midpoint)
+                + 32 * f(midpoint + h)
+                + 7 * f(b)
             )
-    except AttributeError:
-        raise ValueError(
-            f"Invalid marker ID. For this dictionary, marker ID must be between 0 and {aruco_dict.markerSize - 1}"
+            - (b - a) ** 7
+            / 1935360
+            * central_difference_6th(f, midpoint, 0.01)  # Numerical sixth derivative
         )
 
-    # Check marker size
-    if marker_size <= 0:
-        raise ValueError("Marker size must be a positive integer.")
 
-    # Generate the marker image
-    try:
-        marker_image = aruco.generateImageMarker(aruco_dict, marker_id, marker_size)
-    except cv2.error as e:
-        if "sidePixels >= (markerSize + 2*borderBits)" in str(e):
-            raise ValueError("Marker size is too small for the given dictionary.") from e
-        else:
-            raise
+    total_integral = 0
+    for i in range(N):
+        sub_a = x_coords[i]
+        sub_b = x_coords[i+1]
+        sub_integral = modified_booles_rule(fun, sub_a, sub_b)
+        total_integral += sub_integral
+        A[i] = sub_integral
 
-    # Save the marker image
-    output_path = os.path.join(output_folder, f"marker_{marker_id}.png")
-    cv2.imwrite(output_path, marker_image)
 
-    print(f"ArUco marker saved to: {output_path}")
+    if areas:
+        return x_coords, A
+    else:
+        return total_integral
+
+
+if __name__ == '__main__':
+    # Example usage:
+    def f(x):
+        return 1 / (1 + x)
+
+    limits = (0, 1)
+    N = 5
+
+    # Calculate total integral
+    integral_value = midPtDerivBoolesRule(f, limits, N)
+    print("Total integral:", integral_value)
+
+    # Calculate subinterval areas
+    x_coords, areas = midPtDerivBoolesRule(f, limits, N, areas=True)
+    print("X Coordinates:", x_coords)
+    print("Subinterval areas:", areas)
+    print("Sum of subinterval areas:", np.sum(areas)) #Should be approximately equal to total integral
+
+    #Compare with analytical solution
+    analytical_solution = np.log(1 + limits[1]) - np.log(1 + limits[0])
+    print("Analytical Solution:", analytical_solution)
