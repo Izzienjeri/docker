@@ -1,120 +1,106 @@
-"""This file contains the tests of the golden solution."""
-import os
+import glob
 import unittest
-from solution import clean_word, read_book
+import cv2
+import cv2.aruco as aruco
+import os
+import shutil
+from solution import generate_aruco_marker  # Assuming ResponseA.py contains your function
 
-class TestTextProcessing(unittest.TestCase):
-    """Unit tests for text processing functions."""
-
-    def test_basic_punctuation_removal(self):
-        """Test with basic punctuation at the end."""
-        words = ["hello!", "world,", "test.", "example?", "clean"]
-        expected = ['hello', 'world', 'test', 'example', 'clean']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_no_punctuation(self):
-        """Test with no punctuation."""
-        words = ["hello", "world", "test", "example", "clean"]
-        expected = ['hello', 'world', 'test', 'example', 'clean']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_only_punctuation(self):
-        """Test with only punctuation."""
-        words = ["!", ",", ".", "?"]
-        expected = ['', '', '', '']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_mixed_punctuation_start_end(self):
-        """Test with mixed punctuation at start and end."""
-        words = ["!hello", "world!", ",test.", "?example"]
-        expected = ['hello', 'world', 'test', 'example']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_empty_word_list(self):
-        """Test with an empty list of words."""
-        words = []
-        expected = []
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_hyphens_apostrophes(self):
-        """Test words with hyphens and apostrophes."""
-        words = ["hello-world", "it's", "test-case"]
-        expected = ['hello-world', "it's", 'test-case']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_repeated_punctuation(self):
-        """Test words with repeated punctuation."""
-        words = ["!!hello!!", ",,world,,", "..test..", "??example??"]
-        expected = ['hello', 'world', 'test', 'example']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_embedded_punctuation(self):
-        """Test words with embedded punctuation."""
-        words = ["he!llo", "wo,rld", "te.st", "ex?ample"]
-        expected = ['he!llo', 'wo,rld', 'te.st', 'ex?ample']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_all_numbers(self):
-        """Test words with only numbers."""
-        words = ["1", "2", "3", "4"]
-        expected = ['1', '2', '3', '4']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_alphanumeric_number(self):
-        """Test words with alphanumeric and numbers."""
-        words = ["hello1", "2world"]
-        expected = ['hello1', '2world']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-    def test_words_with_special_characters(self):
-        """Test words with special characters."""
-        words = ["#$%", "%^&$"]
-        expected = ['', '']
-        cleaned_words = [clean_word(word) for word in words]
-        self.assertEqual(cleaned_words, expected)
-
-
-class TestFileProcessing(unittest.TestCase):
-    """Unit tests for the file processing function."""
+class TestGenerateArucoMarker(unittest.TestCase):
 
     def setUp(self):
-        """Set up for test methods."""
-        self.test_file = "test_book.txt"
-        with open(self.test_file, "w", encoding="utf-8") as f:
-            f.write("This is a test. It has multiple lines.\nAnd some words.")
+        self.output_folder = "test_aruco_markers"
 
     def tearDown(self):
-        """Tear down for test methods."""
-        if os.path.exists(self.test_file):
-            os.remove(self.test_file)
+        if os.path.exists(self.output_folder):
+            shutil.rmtree(self.output_folder)
 
-    def test_read_book_valid_file(self):
-        """Test reading a valid file."""
-        expected_words = [
-            "This", "is", "a", "test.", "It", "has", "multiple",
-            "lines.", "And", "some", "words."
-        ]
-        actual_words = read_book(self.test_file)
-        self.assertEqual(actual_words, expected_words)
+    def get_first_file_in_folder(self, folder_path):
+        """Helper function to get the first file in a folder."""
+        files = glob.glob(os.path.join(folder_path, '*'))
+        files = [f for f in files if os.path.isfile(f)]  # Filter out directories
+        if files:
+            return files[0]
+        else:
+            return None
 
-    def test_read_book_empty_file(self):
-        """Test reading an empty file."""
-        empty_file = "empty_book.txt"
-        open(empty_file, 'w').close()  # Create an empty file
-        self.addCleanup(os.remove, empty_file)  # Clean up after test
-        words = read_book(empty_file)
-        self.assertEqual(words, [])
+    def test_generate_aruco_marker(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
 
+        # Generate the marker (should not raise an exception)
+        generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+
+        # Get the first file in the output folder
+        first_file = self.get_first_file_in_folder(self.output_folder)
+
+        self.assertTrue(os.path.exists(first_file))
+
+        # Check if the generated image has the correct dimensions
+        img = cv2.imread(first_file)
+        self.assertEqual(img.shape, (marker_size, marker_size, 3))
+
+    def test_invalid_dictionary_id(self):
+        marker_id = 1
+        dictionary_id = -1  # Invalid dictionary ID
+        marker_size = 200
+
+        with self.assertRaises(TypeError):  # Expect a TypeError
+            generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        # Folder should be empty
+        self.assertEqual(len(os.listdir(self.output_folder)), 0)
+
+    def test_invalid_marker_id(self):
+        marker_id = -1  # Invalid marker ID
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+
+        with self.assertRaises(ValueError):  # Expect a ValueError
+            generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        # Folder should be empty
+        self.assertEqual(len(os.listdir(self.output_folder)), 0)
+
+    def test_invalid_output_folder(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+        invalid_output_folder = ""  # Invalid output folder
+
+        with self.assertRaises(ValueError):  # Expect a ValueError
+            generate_aruco_marker(marker_id, dictionary_id, invalid_output_folder, marker_size)
+
+    def test_invalid_marker_size(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = -200  # Invalid marker size
+
+        with self.assertRaises(ValueError):  # Expect a ValueError
+            generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        # Folder should be empty
+        self.assertEqual(len(os.listdir(self.output_folder)), 0)
+
+    def test_correct_return_type(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+
+        # Should not raise an exception
+        result = generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        self.assertIsNone(result)  # Should return None
+
+    def test_populated_output_folder(self):
+        marker_id = 1
+        dictionary_id = aruco.DICT_4X4_50
+        marker_size = 200
+
+        # Should not raise an exception
+        generate_aruco_marker(marker_id, dictionary_id, self.output_folder, marker_size)
+        first_file = self.get_first_file_in_folder(self.output_folder)
+
+        self.assertTrue(os.path.exists(self.output_folder))
+        self.assertTrue(len(os.listdir(self.output_folder)) > 0)  # Folder should not be empty
+        self.assertTrue(os.path.exists(first_file))
 
 if __name__ == '__main__':
-    unittest.main(verbosity=2)
+    unittest.main()

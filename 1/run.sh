@@ -1,2 +1,2 @@
 #!/bin/bash
-pytest eval.py
+python -m unittest eval.py
