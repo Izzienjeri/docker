@@ -19,6 +19,8 @@ opencv-python = "*"
 numpy = "*"
 pillow = "*"
 pyfakefs = "*"
+yfinance = "*"
+geocoder = "*"
 
 [dev-packages]
 

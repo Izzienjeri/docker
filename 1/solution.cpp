@@ -1,8 +1,3 @@
-import os
-from extract_solution import extract_solution
-
-llm_response = '''
-```c++
 #include <iostream>
 #include <vector>
 #include <algorithm>
@@ -387,65 +382,9 @@ public:
     }
 };
 
-int main() {
-    Game game;
-    game.bidding();
-    game.playGame();
-    return 0;
-}
-```
-
-Key changes:
-
-*   **`currentTrick` Vector:** A `std::vector<Card> currentTrick` is added to the `Game` class to hold the cards played in the current trick.
-*   **`ledSuit` Variable:** A `Suit ledSuit` is added to the `Game` class to track the suit of the first card played in a trick.  Crucial for following suit rules.
-*   **`trickFinished` Boolean:**  Added a bool called trickFinished, that is flipped to true to see if the round is finished, and the determineTrickWinner function may be called.
-*   **Complete `playCard()` Implementation:**
-    *   The `playCard()` function now adds the played card to the `currentTrick` vector.
-    *   It determines the `ledSuit` if it's the first card of the trick.
-    *   It calls the `determineTrickWinner()` function after both cards are played in the currentTrick.
-    *   It ensures that the vector is cleared when finished to avoid memory issues.
-*   **`determineTrickWinner()` Implementation:**  The `determineTrickWinner()` function now correctly determines the winner of a trick based on the trump suit, the led suit, and the rank of the cards.
-*   **`playGame()` Function:** Added a `playGame()` function to orchestrate the main game loop.  It calls `playCard()` until all cards have been played.
-*   **Follow Suit enforcement**: This current version does NOT enforce that the players must follow suit.
-
-Next Steps:
-* Enforce follow suit rules
-* Implement score keeping
-'''
-
-try:
-    response = extract_solution(llm_response=llm_response)
-  
-
-    if not isinstance(response, list):
-        raise ValueError(
-            "Expected response to be a list of (file_name, code) tuples."
-        )
-
-    for item in response:
-
-        if not isinstance(item, tuple) or len(item) != 2:
-            raise ValueError("Invalid tuple.")
-
-        file_name, code = item
-
-        # Check if the file itself exists
-        if not os.path.isfile(file_name):
-            raise FileNotFoundError(
-                f"The file '{file_name}' does not exist. "
-                "Please check the path."
-            )
-
-        # Proceed to write only if the file already exists
-        with open(file_name, "w") as file:
-            file.write(code)
-
-        print(f"File '{file_name}' written successfully.")
-        break
-
-except FileNotFoundError as fnf_error:
-    print(f"File error: {fnf_error}")
-
-except Exception as e:
-    print(f"An error occurred while running extract solution test: {e}")
+// int main() {
+//     Game game;
+//     game.bidding();
+//     game.playGame();
+//     return 0;
+// }
